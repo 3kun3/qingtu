@@ -670,7 +670,22 @@ function loadGreetWeather() {
     resolve({ lat: g.lat, lng: g.lng, city: c.name });
   });
 
+  // 用户手动设过出发地 → 优先用它，不再信 IP。
+  // 国内手机 IP（尤其走代理 / 校园网出口时）常被误判成北京等异地城市，
+  // 而用户手选的「出发地」是明确意图，比 IP 可靠得多。
+  const tryHome = () => new Promise((resolve, reject) => {
+    if (typeof Store === 'undefined' || !Store.getHome) { reject(new Error('no store')); return; }
+    const key = Store.getHome();
+    const info = (typeof CITY_INDEX !== 'undefined') ? CITY_INDEX[key] : null;
+    if (!key || !info || !info.center) { reject(new Error('no home')); return; }
+    const g = (typeof Navi !== 'undefined' && Navi.wgs84ToGcj02)
+      ? Navi.wgs84ToGcj02(info.center[1], info.center[0])
+      : { lng: info.center[1], lat: info.center[0] };
+    resolve({ lat: g.lat, lng: g.lng, city: info.name });
+  });
+
   tryGps()
+    .catch(() => tryHome())
     .catch(() => ipLocate())
     .catch(() => tryCity())
     .then(pos => finish(pos.lat, pos.lng, pos.city))
@@ -2294,6 +2309,8 @@ function openHomePicker() {
     Store.setHome(key);
     mask.remove();
     syncHomeCard();
+    // 顺手刷新问候卡的定位/天气，用户选完立刻看到变化
+    if (typeof loadGreetWeather === 'function') loadGreetWeather();
     toast(`出发地已设为 ${POI_DB[key].name}`);
     // 若当前在结果页，立即刷新大交通卡
     if (state.page === 'result' && state.plan) renderTransport();
@@ -5099,6 +5116,9 @@ function bindGlobal() {
   const hb = $('homeBtn'); if (hb) hb.onclick = openHomePicker;
   const editBtn = $('homeEditBtn');
   if (editBtn) editBtn.onclick = openHomePicker;
+  // 首页问候卡的位置文字：点一下也能改城市（定位不准时手动纠正）
+  const greetLocEl = $('greetLoc');
+  if (greetLocEl) greetLocEl.onclick = openHomePicker;
   $('searchInput').onkeydown = e => { if (e.key === 'Enter') doSearch(); };
   $('searchInput').oninput = searchSuggest;
   $('searchInput').onfocus = searchSuggest;
