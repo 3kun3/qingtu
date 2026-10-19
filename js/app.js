@@ -629,15 +629,19 @@ function loadGreetWeather() {
       .catch(() => { tempEl.textContent = '—°'; icoEl.textContent = '🌡️'; });
   };
 
-  // 拿到坐标后：先用本地城市库即时显示名字，再尝试联网反查更精确的地名
+  // 拿到坐标后：优先用坐标算最近城市（比 IP 返回的城市名更精确），
+  // IP 城市名和 OSM 反查只作为兜底
   // 此时 lat/lng 统一为 GCJ-02
   const finish = (lat, lng, knownName) => {
     showWeather(lat, lng);
-    const hit = cityByName(knownName);     // IP 接口常返回英文名，能对上本地库就换成中文
-    if (hit) { locEl.textContent = hit.name; return; }
     const local = nearestCity(lat, lng);
     locEl.textContent = (local ? local.name : '') || knownName || '当前位置';
-    reverseCityName(lat, lng).then(n => { if (n) locEl.textContent = n; });
+    // OSM 反查结果必须匹配本地城市库才采用，避免返回上级地级市（如"庐山市"）覆盖掉更精确的共青城
+    reverseCityName(lat, lng).then(n => {
+      if (!n) return;
+      const r = cityByName(n);
+      if (r) locEl.textContent = r.name;
+    });
   };
 
   // GPS：8 秒内没结果就放弃，交给 IP 兜底（避免一直卡在“定位中…”）
