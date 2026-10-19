@@ -526,11 +526,17 @@ const WMO_ICON = {
 
 /** 找离坐标最近的城市（用于显示地区名） */
 function nearestCity(lat, lng) {
+  // 定位坐标是 GCJ-02，CITY_INDEX 的 center 是 WGS84，
+  // 必须把城市 center 转成 GCJ-02 再比较，否则坐标系不一致会有数百米偏差
+  const wgs2gcj = (typeof Navi !== 'undefined' && Navi.wgs84ToGcj02)
+    ? Navi.wgs84ToGcj02
+    : (lng, lat) => ({ lng, lat });
   let best = null, bestD = Infinity;
   Object.keys(CITY_INDEX).forEach(k => {
     const c = CITY_INDEX[k];
     if (!c.center) return;
-    const d = Math.hypot(c.center[0] - lat, c.center[1] - lng);
+    const g = wgs2gcj(c.center[1], c.center[0]);
+    const d = Math.hypot(g.lat - lat, g.lng - lng);
     if (d < bestD) { bestD = d; best = c; }
   });
   return best;
@@ -538,7 +544,9 @@ function nearestCity(lat, lng) {
 
 /** 用坐标反查真实城市名：优先 OSM Nominatim（免费、无需 Key、中文优先）；失败返回空串，由调用方兜底 */
 function reverseCityName(lat, lng) {
-  const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=zh&zoom=10&lat=' + lat + '&lon=' + lng;
+  // 入参是 GCJ-02，OSM 要 WGS84，转回再查
+  const w = (typeof Navi !== 'undefined' && Navi.gcj02ToWgs84) ? Navi.gcj02ToWgs84(lng, lat) : { lng, lat };
+  const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=zh&zoom=10&lat=' + w.lat + '&lon=' + w.lng;
   return fetch(url, { cache: 'no-store' })
     .then(r => r.json())
     .then(d => {
@@ -569,22 +577,30 @@ function cityByName(name) {
 
 /** IP 粗定位兜底：多源依次尝试，均无需 Key（国内接口优先保证可用性） */
 function ipLocate() {
+  // IP 接口返回的是 WGS84，统一转成 GCJ-02 再交给 finish，与 GPS 路径口径一致
+  const toGcj = (lat, lng) => {
+    if (typeof Navi !== 'undefined' && Navi.wgs84ToGcj02) {
+      const g = Navi.wgs84ToGcj02(+lng, +lat);
+      return { lat: g.lat, lng: g.lng };
+    }
+    return { lat: +lat, lng: +lng };
+  };
   const fromIpwho = () => fetch('https://ipwho.is/', { cache: 'no-store' }).then(r => r.json()).then(d => {
-    if (d && d.success !== false && d.latitude != null) return { lat: +d.latitude, lng: +d.longitude, city: d.city || '' };
+    if (d && d.success !== false && d.latitude != null) { const g = toGcj(d.latitude, d.longitude); return { lat: g.lat, lng: g.lng, city: d.city || '' }; }
     throw new Error('ipwho');
   });
   const fromIpsb = () => fetch('https://api.ip.sb/geoip', { cache: 'no-store' }).then(r => r.json()).then(d => {
-    if (d && d.latitude != null) return { lat: +d.latitude, lng: +d.longitude, city: d.city || '' };
+    if (d && d.latitude != null) { const g = toGcj(d.latitude, d.longitude); return { lat: g.lat, lng: g.lng, city: d.city || '' }; }
     throw new Error('ipsb');
   });
   const fromVore = () => fetch('https://api.vore.top/api/IPdata', { cache: 'no-store' }).then(r => r.json()).then(d => {
     const name = d && d.ipdata && (d.ipdata.info3 || d.ipdata.info2 || '');
     const hit = cityByName(name);
-    if (hit) return { lat: hit.center[0], lng: hit.center[1], city: hit.name };
+    if (hit) { const g = toGcj(hit.center[0], hit.center[1]); return { lat: g.lat, lng: g.lng, city: hit.name }; }
     throw new Error('vore');
   });
   const fromIpapi = () => fetch('https://ipapi.co/json/', { cache: 'no-store' }).then(r => r.json()).then(d => {
-    if (d && d.latitude != null) return { lat: +d.latitude, lng: +d.longitude, city: d.city || '' };
+    if (d && d.latitude != null) { const g = toGcj(d.latitude, d.longitude); return { lat: g.lat, lng: g.lng, city: d.city || '' }; }
     throw new Error('ipapi');
   });
   return fromIpwho().catch(fromIpapi).catch(fromIpsb).catch(fromVore);
@@ -597,9 +613,11 @@ function loadGreetWeather() {
   locEl.textContent = '定位中…';
 
   // 用坐标拉 Open-Meteo 实时天气（免费、无需 Key）
+  // 入参是 GCJ-02，open-meteo 要 WGS84，转回再传
   const showWeather = (lat, lng) => {
-    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat +
-      '&longitude=' + lng + '&current=temperature_2m,weather_code&timezone=auto';
+    const w = (typeof Navi !== 'undefined' && Navi.gcj02ToWgs84) ? Navi.gcj02ToWgs84(lng, lat) : { lng, lat };
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + w.lat +
+      '&longitude=' + w.lng + '&current=temperature_2m,weather_code&timezone=auto';
     fetch(url, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
@@ -612,6 +630,7 @@ function loadGreetWeather() {
   };
 
   // 拿到坐标后：先用本地城市库即时显示名字，再尝试联网反查更精确的地名
+  // 此时 lat/lng 统一为 GCJ-02
   const finish = (lat, lng, knownName) => {
     showWeather(lat, lng);
     const hit = cityByName(knownName);     // IP 接口常返回英文名，能对上本地库就换成中文
@@ -642,7 +661,9 @@ function loadGreetWeather() {
     const keys = Object.keys(CITY_INDEX);
     if (!keys.length) { reject(new Error('no city')); return; }
     const c = CITY_INDEX[keys[0]];
-    resolve({ lat: c.center[0], lng: c.center[1], city: c.name });
+    // center 是 WGS84，转成 GCJ-02 与 finish 口径一致
+    const g = (typeof Navi !== 'undefined' && Navi.wgs84ToGcj02) ? Navi.wgs84ToGcj02(c.center[1], c.center[0]) : { lng: c.center[1], lat: c.center[0] };
+    resolve({ lat: g.lat, lng: g.lng, city: c.name });
   });
 
   tryGps()

@@ -153,9 +153,13 @@ function setGcjLocation(lat, lng, label, accuracy) {
 function cityFallback(cityKey) {
   const info = (typeof CITY_INDEX !== 'undefined') ? CITY_INDEX[cityKey] : null;
   if (!info || !info.center) return null;
+  // center 是 WGS84，统一转 GCJ-02 与 GPS 路径一致
+  const g = (typeof Navi !== 'undefined' && Navi.wgs84ToGcj02)
+    ? Navi.wgs84ToGcj02(info.center[1], info.center[0])
+    : { lng: info.center[1], lat: info.center[0] };
   const v = {
-    lng: info.center[1],
-    lat: info.center[0],
+    lng: g.lng,
+    lat: g.lat,
     accuracy: 5000,              // 城市级 ≈ 5km 误差，图上要画大圈说明
     ts: Date.now(),
     source: 'city',

@@ -255,11 +255,16 @@ function haversineKm2(a, b) {
 /* 取已收录城市里距离 (lat,lng) 最近的一个 */
 function nearestCity(lat, lng) {
   const CI = _CI();
+  // 定位坐标是 GCJ-02，城市 center 是 WGS84，统一转 GCJ-02 再比较
+  const wgs2gcj = (typeof Navi !== 'undefined' && Navi.wgs84ToGcj02)
+    ? Navi.wgs84ToGcj02
+    : (lng, lat) => ({ lng, lat });
   let best = null;
   Object.keys(CI).forEach(k => {
     const c = CI[k].center;
     if (!c) return;
-    const d = haversineKm2({ lat, lng }, { lat: c[0], lng: c[1] });
+    const g = wgs2gcj(c[1], c[0]);
+    const d = haversineKm2({ lat, lng }, { lat: g.lat, lng: g.lng });
     if (!best || d < best.d) best = { city: k, d };
   });
   return best;
