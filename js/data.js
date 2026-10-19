@@ -3210,6 +3210,17 @@ const CITY_INDEX = {
   "hasHotels": true,
   "hotelAreaCount": 4
  },
+ "gongqing": {
+  "name": "共青城",
+  "slogan": "鄱阳湖畔的青春之城 · 创业热土上的诗意栖居",
+  "center": [
+   29.2315,
+   115.7851
+  ],
+  "poiCount": 8,
+  "hasHotels": true,
+  "hotelAreaCount": 2
+ },
  "ganzhou": {
   "name": "赣州",
   "slogan": "宋城墙下听章贡合流 · 一座活着的宋代老城",
