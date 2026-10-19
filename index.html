@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>轻途 · 把一座城走成自己的故事线</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="css/style.css?v=20261018f">
+</head>
+<body>
+
+<!-- 手机壳：模拟微信小程序外观 -->
+<div id="stage">
+<!-- 显示大小调节：缩放整壳（transform:scale），壳内布局尺寸不变 -->
+<div class="zoomer" id="zoomer">
+  <button class="zm-btn" id="zmOut" title="缩小">−</button>
+  <button class="zm-val" id="zmVal" title="恢复默认">100%</button>
+  <button class="zm-btn" id="zmIn" title="放大">＋</button>
+</div>
+<div id="phone">
+  <div class="notch"></div>
+  <div class="screen">
+
+    <!-- ============================================================
+         页面 1 · index —— 首页（tabBar 页）
+         ============================================================ -->
+    <section class="page" id="page-index">
+
+      <!-- Hero 风景 Banner -->
+      <div class="home-hero">
+        <img class="home-hero-img" src="img/hero-landscape.jpg" alt="风景" onerror="this.style.display='none'">
+        <div class="home-hero-bg"></div>
+        <div class="home-hero-content">
+          <h1 class="home-hero-title">轻途</h1>
+          <p class="home-hero-sub">把一座城走成自己的故事线</p>
+        </div>
+      </div>
+
+      <div class="wrap">
+
+        <!-- 问候卡 + 天气 -->
+        <div class="greet-card card">
+          <div class="greet-left">
+            <div class="greet-hi">Hi，旅行者 👋</div>
+            <div class="greet-sub" id="greetDate">—</div>
+          </div>
+          <div class="greet-weather" id="greetWeather">
+            <div class="greet-loc" id="greetLoc">定位中…</div>
+            <div class="greet-temp-row">
+              <span class="greet-temp" id="greetTemp">—°</span>
+              <span class="greet-ico" id="greetIco">⛅</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 我的位置（出发城市）——紧跟问候卡，把「人在哪/出发地」归到一起 -->
+        <div class="home-card card" id="homeCard" hidden>
+          <div class="home-left">
+            <span class="home-icon">📍</span>
+            <div class="home-text">
+              <div class="home-title">当前出发地</div>
+              <div class="home-sub" id="homeSub">—</div>
+            </div>
+          </div>
+          <button class="home-btn" id="homeEditBtn">修改</button>
+        </div>
+
+        <!-- 主入口卡片 -->
+        <div class="entry-card card" data-go="question">
+          <div class="entry-left">
+            <span class="entry-icon">🧭</span>
+            <div>
+              <div class="entry-title">开始规划行程</div>
+              <div class="entry-sub">定制你的专属旅程</div>
+            </div>
+          </div>
+          <span class="entry-arrow">›</span>
+        </div>
+
+        <!-- 功能卡片（3 个，参考设计） -->
+        <div class="feature-grid">
+          <button class="feature-card" data-go="quickplan">
+            <div class="feature-ico">📋</div>
+            <div class="feature-tx">行程清单</div>
+            <div class="feature-sub">计划你的旅行安排</div>
+          </button>
+          <button class="feature-card" data-go="mine">
+            <div class="feature-ico">📝</div>
+            <div class="feature-tx">备忘记录</div>
+            <div class="feature-sub">重要事项不遗漏</div>
+          </button>
+          <button class="feature-card" data-go="mine">
+            <div class="feature-ico">⭐</div>
+            <div class="feature-tx">我的收藏</div>
+            <div class="feature-sub">喜欢的地点收藏</div>
+          </button>
+        </div>
+
+        <!-- 搜索栏 -->
+        <div class="search-wrap card">
+          <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <input class="search-input" id="searchInput" placeholder="想去哪座城市？搜一下试试" />
+            <button class="search-btn" id="searchBtn">搜索</button>
+          </div>
+          <div class="search-suggest" id="searchSuggest" hidden></div>
+        </div>
+        <div class="search-tip" id="searchTip"></div>
+
+        <!-- 人气城市 -->
+        <div class="sec-head">
+          <span class="sec-leaf"></span>
+          <span class="sec-title">人气城市 🔥</span>
+          <span class="sec-extra" id="cityCount"></span>
+        </div>
+        <div class="hot-scroll" id="hotScroll"></div>
+
+        <!-- 风格标签 -->
+        <div class="sec-head">
+          <span class="sec-leaf"></span>
+          <span class="sec-title">按心情挑路线</span>
+        </div>
+        <div class="style-tags" id="styleTags"></div>
+
+        <div class="foot-brand">—— 轻途 · 不是打卡清单，是一城的故事线 ——</div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         页面 2 · question —— 深度定制问卷（8 题，逻辑原样保留）
+         ============================================================ -->
+    <section class="page" id="page-question" hidden>
+      <header class="topbar">
+        <button class="topbar-back" data-go="index">‹</button>
+        <div class="topbar-title">深度定制</div>
+        <div class="topbar-pad"></div>
+      </header>
+
+      <main class="wrap">
+        <div id="quiz"></div>
+        <div class="quiz-foot" id="quizFoot">
+          <button class="btn-ghost" id="btnBack">上一步</button>
+          <div class="step-dots" id="stepDots"></div>
+          <button class="btn-primary" id="btnNext">下一步</button>
+        </div>
+      </main>
+    </section>
+
+    <!-- ============================================================
+         页面 2.4 · province —— 省份聚合（搜「江西」看这一片都收录了什么）
+         ============================================================ -->
+    <section class="page" id="page-province" hidden>
+      <header class="topbar">
+        <button class="topbar-back" data-go="index">‹</button>
+        <div class="topbar-title" id="provTitle">省份</div>
+        <div class="topbar-pad"></div>
+      </header>
+      <main class="wrap prov-wrap">
+        <div class="prov-hero card">
+          <div class="prov-head">
+            <span class="prov-flag" id="provFlag">🏳</span>
+            <div>
+              <h2 id="provName">省份</h2>
+              <p id="provSub">—</p>
+            </div>
+          </div>
+          <div class="prov-stats" id="provStats"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>已收录的城市</h3>
+            <span class="card-note" id="provCityNote"></span>
+          </div>
+          <div class="city-grid" id="provCities"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>点开看各城景点</h3>
+            <span class="card-note">点一下展开，不用跳页</span>
+          </div>
+          <div class="prov-pois" id="provPois"></div>
+        </div>
+      </main>
+    </section>
+
+    <!-- ============================================================
+         页面 2.5 · city —— 城市介绍（搜索/卡片先看介绍，再决定规划）
+         ============================================================ -->
+    <section class="page" id="page-city" hidden>
+      <header class="topbar">
+        <button class="topbar-back" data-go="index">‹</button>
+        <div class="topbar-title" id="cityTitle">城市</div>
+        <div class="topbar-pad"></div>
+      </header>
+
+      <main class="wrap city-intro">
+        <div class="ci-hero" id="ciHero">
+          <div class="ci-emoji" id="ciEmoji">🏙</div>
+          <div class="ci-head">
+            <h2 id="ciName">城市</h2>
+            <p id="ciSlogan">—</p>
+          </div>
+          <div class="ci-meta" id="ciMeta"></div>
+          <div class="ci-hero-acts">
+            <button class="ci-visit" id="ciVisitBtn">✦ 我去过 · 点亮这座城</button>
+            <button class="ci-nav" id="ciNavBtn">🧭 导航去这里</button>
+          </div>
+        </div>
+
+        <div class="card ci-about">
+          <div class="card-head"><h3>这是座什么样的城</h3></div>
+          <p class="ci-desc" id="ciDesc">—</p>
+          <div class="ci-tags" id="ciTags"></div>
+        </div>
+
+        <div class="sec-head">
+          <span class="sec-leaf"></span>
+          <span class="sec-title">值得去的几处</span>
+          <span class="sec-extra" id="ciPoiCount"></span>
+        </div>
+        <div class="ci-pois" id="ciPois"></div>
+
+        <!-- 旅行者分享：所有用户的反馈和宝藏地投稿 -->
+        <div class="sec-head" id="ciShareHead" hidden>
+          <span class="sec-leaf"></span>
+          <span class="sec-title">旅行者分享</span>
+          <span class="sec-extra" id="ciShareCount"></span>
+        </div>
+        <div class="ci-share" id="ciShare"></div>
+
+        <div class="ci-pad-bottom"></div>
+      </main>
+    </section>
+
+    <!-- ============================================================
+         页面 3 · quickplan —— 快速规划（仅城市 + 天数）
+         ============================================================ -->
+    <section class="page" id="page-quickplan" hidden>
+      <header class="topbar">
+        <button class="topbar-back" data-go="index">‹</button>
+        <div class="topbar-title">快速规划</div>
+        <div class="topbar-pad"></div>
+      </header>
+
+      <div class="wrap">
+        <div class="head">
+          <div class="head-title">快速规划</div>
+          <div class="head-sub">两步，10 秒出发</div>
+          <div class="head-badge">⚡ 极简模式</div>
+        </div>
+
+        <!-- 已选目的地摘要：一屏可见，不用翻列表 -->
+        <div class="pick-summary" id="quickSummary">
+          <div class="ps-emoji" id="quickSumEmoji">🧭</div>
+          <div class="ps-body">
+            <div class="ps-label" id="quickSumLabel">还没选目的地</div>
+            <div class="ps-name" id="quickSumName">在下面搜一座城</div>
+          </div>
+          <button class="ps-change" id="quickChange" hidden>更换</button>
+        </div>
+
+        <!-- 多城 chip 行（选了 2 座以上才出现）：删城 + 顺序切换 -->
+        <div class="quick-city-chips" id="quickCityChips" hidden></div>
+
+        <div class="sec-head">
+          <span class="sec-leaf"></span>
+          <span class="sec-title">游玩几天</span>
+          <span class="sec-extra" id="quickDaysHint"></span>
+        </div>
+        <div class="days-row" id="quickDays"></div>
+
+        <div class="sec-head">
+          <span class="sec-leaf"></span>
+          <span class="sec-title">目的地</span>
+          <span class="sec-extra" id="quickCityHint">搜一下更快</span>
+        </div>
+
+        <div class="qs-bar">
+          <span class="qs-icon">🔍</span>
+          <input class="qs-input" id="quickKw" placeholder="搜城市 / 景点，支持拼音和首字母" />
+          <button class="qs-clear" id="quickKwClear" hidden>✕</button>
+        </div>
+
+        <div class="qs-list" id="quickSuggest" hidden></div>
+        <div class="city-grid" id="quickCities"></div>
+        <div class="more-row" id="quickMore">展开全部 ▾</div>
+
+        <div class="foot">
+          <button class="btn-main disabled" id="quickGo">✦ 生成我的路线</button>
+          <div class="upgrade" id="quickUpgrade">想要更懂你？试试 <span class="upgrade-link">深度定制问卷</span> →</div>
+          <div class="foot-note">以经典画像快速编排 · 随时可升级深度定制</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         页面 4 · result —— 路线详情（含收藏 / 攻略 / 替换）
+         ============================================================ -->
+    <section class="page" id="page-result" hidden>
+      <header class="topbar">
+        <button class="topbar-back" id="resultBack">‹</button>
+        <div class="topbar-title">我的路线</div>
+        <div class="topbar-acts">
+          <button class="topbar-fav" id="visitBtn" title="去过就点亮">✦</button>
+          <button class="topbar-fav" id="favBtn" title="收藏">☆</button>
+        </div>
+      </header>
+
+      <main class="wrap result">
+        <div class="result-head">
+          <div>
+            <div class="eyebrow">你的旅行人格</div>
+            <h2 id="personaName">—</h2>
+            <p id="personaDesc">—</p>
+          </div>
+          <div class="radar-box">
+            <svg id="radar" viewBox="0 0 260 260"></svg>
+          </div>
+        </div>
+
+        <div class="tag-row" id="personaTags"></div>
+
+        <!-- 多城城市顺序切换（选择器里也能切，这里给看完路线后反悔的用户） -->
+        <div class="result-sort-bar" id="resultSortBar" hidden></div>
+
+        <!-- 大交通卡：出发地 → 目的地（设定「我的位置」后显示） -->
+        <div id="transportSlot"></div>
+
+        <!-- 为什么是这条路线（算法差异化可见） -->
+        <div class="card why-card" id="whyCard"></div>
+
+        <div class="card map-card">
+          <div class="card-head">
+            <h3>路线地图</h3>
+            <span class="hint" id="mapHint">双指缩放 · 拖动平移</span>
+          </div>
+          <div class="map-city-tabs" id="mapCityTabs"></div>
+          <div class="map-legend" id="mapLegend"></div>
+          <!-- 图层开关：景点 / 酒店 / 我的位置，只切显示不重绘地图 -->
+          <div class="map-layers" id="mapLayers"></div>
+          <div class="map-stage" id="mapStage">
+            <svg id="map" viewBox="0 0 800 460" preserveAspectRatio="xMidYMid meet"></svg>
+            <!-- 高德标准底图层（联网时优先显示，失败回退 SVG 示意图） -->
+            <div class="amap-stage" id="amap"></div>
+            <div class="map-tools">
+              <button class="map-tool" id="mapBaseToggle" title="切换 高德标准底图 / 示意图">🗺️</button>
+              <button class="map-tool" id="mapStar" title="在高德地图上标出全部点位">⭐</button>
+              <button class="map-tool" id="mapLocate" title="定位到我">📍</button>
+              <button class="map-tool svg-only" id="mapZoomIn" title="放大">＋</button>
+              <button class="map-tool svg-only" id="mapZoomOut" title="缩小">－</button>
+              <button class="map-tool svg-only" id="mapReset" title="复位">⤢</button>
+              <button class="map-tool svg-only" id="mapSave" title="保存图片">⤓</button>
+            </div>
+          </div>
+          <!-- 站点清单：编号与地图圆点一一对应，点一下高亮并只显示这一站的名字 -->
+          <div class="map-stops" id="mapStops"></div>
+        </div>
+
+        <div class="stat-grid" id="statGrid"></div>
+
+        <!-- 住宿安排汇总：把每天选定的酒店列成一份备忘，避免翻到后面忘了前面订哪家 -->
+        <div class="stay-summary" id="staySummary" hidden></div>
+
+        <div id="days"></div>
+
+        <div class="result-foot">
+          <button class="btn-primary" id="btnExport">复制行程文本</button>
+          <button class="btn-primary" id="btnPolish" style="background:linear-gradient(135deg,#7c5cff,#a78bfa)">✨ AI 润色</button>
+          <button class="btn-ghost" id="btnChat">💬 AI 对话</button>
+          <button class="btn-ghost" id="btnRestart">重新规划</button>
+        </div>
+        <div class="disclaimer">
+          行程由规则引擎基于景点标签库生成，开放时间、票价与交通请出行前再次核实。
+        </div>
+      </main>
+    </section>
+
+    <!-- ============================================================
+         页面 5 · mine —— 个人中心（收藏 / 历史 / 足迹）（tabBar 页）
+         ============================================================ -->
+    <section class="page" id="page-mine" hidden>
+      <header class="topbar topbar-plain">
+        <div class="topbar-title">我的轻途</div>
+      </header>
+
+      <div class="wrap">
+        <!-- 数据概览 -->
+        <div class="mine-hero">
+          <div class="mine-hero-title">我的旅行档案</div>
+          <div class="mine-stats" id="mineStats"></div>
+        </div>
+
+        <!-- 足迹点亮地图 -->
+        <div class="card">
+          <div class="card-head">
+            <h3>旅行足迹</h3>
+            <span class="hint" id="footHint">—</span>
+          </div>
+          <div id="footmap" class="footmap"></div>
+        </div>
+
+        <!-- 我的收藏 -->
+        <div class="sec-head">
+          <span class="sec-leaf"></span>
+          <span class="sec-title">我的收藏路线</span>
+        </div>
+        <div id="favList"></div>
+
+        <!-- 历史定制记录 -->
+        <div class="sec-head">
+          <span class="sec-leaf"></span>
+          <span class="sec-title">历史定制记录</span>
+          <button class="sec-action" id="clearHistory">清空</button>
+        </div>
+        <div id="histList"></div>
+
+        <!-- 社区动态 -->
+        <div class="mine-sec">
+          <div class="sec-head"><b>🌍 社区动态</b><span class="sec-sub">所有人的反馈与宝藏地</span></div>
+          <div id="communityList"></div>
+        </div>
+
+        <div class="foot-brand">—— 全部数据保存在本机，不上传、不联网 ——</div>
+      </div>
+    </section>
+
+    <!-- AI 对话页 -->
+    <section class="page" id="page-chat" hidden>
+      <header class="topbar topbar-plain">
+        <div class="topbar-title">💬 轻途 AI 助手</div>
+      </header>
+      <div class="chat-wrap">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-bar">
+          <input class="chat-input" id="chatInput" placeholder="问我旅行的任何问题…" autocomplete="off">
+          <button class="chat-send" id="chatSend">发送</button>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /screen -->
+
+  <!-- 城市介绍页底部规划 CTA（与 tabbar 同级，物理固定在手机壳底部） -->
+  <div class="ci-cta" id="ciCta">
+    <div class="ci-cta-info"><b id="ciCtaName">城市</b><span>就选它，两条路都能走</span></div>
+    <button class="btn-ghost ci-cta-deep" id="ciDeepBtn">✦ 深度定制</button>
+    <button class="btn-primary" id="ciPlanBtn">⚡ 快速规划</button>
+  </div>
+
+  <!-- 底部 tabBar（仅首页 / 我的 显示） -->
+  <nav class="tabbar" id="tabbar">
+    <button class="tab on" data-go="index">
+      <span class="tab-ico">🏠</span><span class="tab-tx">首页</span>
+    </button>
+    <button class="tab" data-go="chat">
+      <span class="tab-ico">💬</span><span class="tab-tx">AI对话</span>
+    </button>
+    <button class="tab" data-go="mine">
+      <span class="tab-ico">👤</span><span class="tab-tx">我的</span>
+    </button>
+  </nav>
+
+  <!-- 生成中遮罩 -->
+  <div class="loading" id="loading" hidden>
+    <div class="loading-card">
+      <div class="loading-orb"></div>
+      <h3>正在为你编排路线</h3>
+      <p id="loadingTip">匹配兴趣标签…</p>
+      <div class="loading-bar"><i></i></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div><!-- /phone -->
+</div><!-- /stage -->
+
+<script src="js/data.js?v=20261016e"></script>
+<script src="js/provinces.js?v=d0e0541f"></script>
+<script src="js/data-loader.js?v=f721e77f"></script>
+<script src="js/poi-names.js?v=8b1af442"></script>
+<script src="js/places.js?v=2bf0030d"></script>
+<script src="js/navi.js?v=8ded6dca"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/geo.js?v=885ab739"></script>
+<script src="js/engine.js?v=20261016e"></script>
+<script src="js/multi.js?v=9979d2df"></script>
+<script src="js/store.js?v=1523400c"></script>
+<script src="js/ai.js?v=20261016c"></script>
+<script src="js/app.js?v=20261018f"></script>
+</body>
+</html>
