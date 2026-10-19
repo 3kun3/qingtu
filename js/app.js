@@ -133,7 +133,8 @@ const CITY_THEME = {
   poyang:        { emoji: '🦢', bg: 'linear-gradient(140deg,#9cc8e0,#2f6a8a)' },
   zhangshu:      { emoji: '🌿', bg: 'linear-gradient(140deg,#a8c8a0,#3f6a48)' },
   fengcheng:     { emoji: '⚔', bg: 'linear-gradient(140deg,#b8b8c8,#4a4a6a)' },
-  guixi:         { emoji: '📖', bg: 'linear-gradient(140deg,#c8b4d0,#6a4a7a)' }
+  guixi:         { emoji: '📖', bg: 'linear-gradient(140deg,#c8b4d0,#6a4a7a)' },
+  gongqing:      { emoji: '🌱', bg: 'linear-gradient(140deg,#a8d8a8,#3f7a4a)' }
 };
 const cityVisual = k => CITY_THEME[k] || { emoji: '🏙', bg: 'linear-gradient(140deg,#9aa5b1,#5a6672)' };
 
@@ -250,7 +251,8 @@ const CITY_ALIAS_EXTRA = {
   poyang: ['鄱阳', '波阳', '湖城', '鄱阳湖湿地公园', '饶州'],
   zhangshu: ['樟树', '药都', '清江', '四特酒', '阁皂山'],
   fengcheng: ['丰城', '剑邑', '洪州窑', '剑池'],
-  guixi: ['贵溪', '象山书院', '信江', '塘湾']
+  guixi: ['贵溪', '象山书院', '信江', '塘湾'],
+  gongqing: ['共青城', '共青', '耀邦', '富华山', '鄱阳湖']
 };
 Object.assign(CITY_ALIAS, CITY_ALIAS_EXTRA);
 
