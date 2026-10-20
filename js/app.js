@@ -685,10 +685,18 @@ function loadGreetWeather() {
   });
 
   tryGps()
-    .catch(() => tryHome())
-    .catch(() => ipLocate())
-    .catch(() => tryCity())
-    .then(pos => finish(pos.lat, pos.lng, pos.city))
+    .then(pos => ({ ...pos, source: 'gps' }))
+    .catch(() => tryHome().then(pos => ({ ...pos, source: 'home' })))
+    .catch(() => ipLocate().then(pos => ({ ...pos, source: 'ip' })))
+    .catch(() => tryCity().then(pos => ({ ...pos, source: 'city' })))
+    .then(pos => {
+      finish(pos.lat, pos.lng, pos.city);
+      // IP 定位在手机上常误判（运营商/校园网出口在外地），
+      // 给一次温和提示，引导用户手动选择出发城市
+      if (pos.source === 'ip') {
+        setTimeout(() => toast('网络定位可能不准，点击城市名可手动选择', 2600), 600);
+      }
+    })
     .catch(() => { locEl.textContent = '定位失败'; tempEl.textContent = '—°'; });
 }
 
@@ -5099,12 +5107,12 @@ function drawFootMap(lightCities) {
  *  工具
  * ============================================================ */
 let toastTimer;
-function toast(msg) {
+function toast(msg, dur) {
   const t = $('toast');
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 1900);
+  toastTimer = setTimeout(() => t.classList.remove('show'), dur || 1900);
 }
 
 /* ============================================================
