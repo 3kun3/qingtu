@@ -1,0 +1,26 @@
+name: poi-images
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/poi_images.py'
+      - '.github/workflows/poi-images.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  survey:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - run: python tools/poi_images.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add _poidata
+          git commit -m "poi image survey results" || echo no-changes
+          git push
