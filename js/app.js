@@ -699,10 +699,16 @@ function loadGreetWeather() {
     .catch(() => tryCity().then(pos => ({ ...pos, source: 'city' })))
     .then(pos => {
       finish(pos.lat, pos.lng, pos.city);
-      // IP 定位在手机上常误判（运营商/校园网出口在外地），
-      // 给一次温和提示，引导用户手动选择出发城市
-      if (pos.source === 'ip') {
-        setTimeout(() => toast('网络定位可能不准，点击城市名可手动选择', 2600), 600);
+      // IP/兜底定位可信度低（校园网出口常在外地，PC 无 GPS 必走 IP），
+      // 把城市胶囊切成醒目的「✎ 修改」按钮样式，并给一次 toast 引导手动选择
+      if (pos.source === 'ip' || pos.source === 'city') {
+        locEl.classList.add('lowconf');
+        locEl.title = '当前为网络粗定位，可能不准；点击手动选择城市';
+        if (pos.source === 'ip') {
+          setTimeout(() => toast('网络定位可能不准，点击城市名可手动选择', 2600), 600);
+        }
+      } else {
+        locEl.classList.remove('lowconf');
       }
     })
     .catch(() => { locEl.textContent = '定位失败'; tempEl.textContent = '—°'; });

@@ -252,6 +252,9 @@ body{
 .greet-temp{font-size:20px;font-weight:700;color:#5b8c68}
 .greet-ico{font-size:20px}
 .greet-range{font-size:10px;color:#8aa795;line-height:1.2;white-space:nowrap}
+/* 低可信度定位（IP/兜底）时，城市胶囊变成醒目的可点修改按钮 */
+.greet-loc.lowconf{background:rgba(192,122,44,.14);color:#c07a2c;border:1px solid rgba(192,122,44,.35)}
+.greet-loc.lowconf::after{content:"✎ 修改";font-size:9px;color:#c07a2c}
 
 /* ---------- 功能卡片宫格（3 列，参考设计） ---------- */
 .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:4px 0 12px}
