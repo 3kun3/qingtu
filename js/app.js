@@ -608,16 +608,19 @@ function ipLocate() {
 
 /** 加载首页问候卡的定位+天气：GPS → IP 定位 → 城市兜底，三级降级 */
 function loadGreetWeather() {
-  const locEl = $('greetLoc'), tempEl = $('greetTemp'), icoEl = $('greetIco');
+  const locEl = $('greetLoc'), tempEl = $('greetTemp'), icoEl = $('greetIco'), rangeEl = $('greetRange');
   if (!locEl) return;
   locEl.textContent = '定位中…';
 
   // 用坐标拉 Open-Meteo 实时天气（免费、无需 Key）
   // 入参是 GCJ-02，open-meteo 要 WGS84，转回再传
+  // 注意：Open-Meteo 是全球预报模型的网格值，与气象站实测可有 1~3° 出入，
+  // 故同时给出今日最高/最低区间，让读数落在可解释范围内
   const showWeather = (lat, lng) => {
     const w = (typeof Navi !== 'undefined' && Navi.gcj02ToWgs84) ? Navi.gcj02ToWgs84(lng, lat) : { lng, lat };
     const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + w.lat +
-      '&longitude=' + w.lng + '&current=temperature_2m,weather_code&timezone=auto';
+      '&longitude=' + w.lng +
+      '&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1';
     fetch(url, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => {
@@ -625,8 +628,13 @@ function loadGreetWeather() {
         if (!cur) return;
         tempEl.textContent = Math.round(cur.temperature_2m) + '°';
         icoEl.textContent = WMO_ICON[cur.weather_code] || '🌡️';
+        const day = d.daily;
+        if (rangeEl && day && day.temperature_2m_max && day.temperature_2m_min) {
+          rangeEl.textContent = '今 ' + Math.round(day.temperature_2m_min[0]) + '~' + Math.round(day.temperature_2m_max[0]) + '°';
+        }
+        tempEl.title = '预报数据来自 Open-Meteo 全球模型，与气象站实测可能相差 1~3°';
       })
-      .catch(() => { tempEl.textContent = '—°'; icoEl.textContent = '🌡️'; });
+      .catch(() => { tempEl.textContent = '—°'; icoEl.textContent = '🌡️'; if (rangeEl) rangeEl.textContent = ''; });
   };
 
   // 拿到坐标后：优先用坐标算最近城市（比 IP 返回的城市名更精确），

@@ -251,6 +251,7 @@ body{
 .greet-temp-row{display:flex;align-items:center;gap:5px}
 .greet-temp{font-size:20px;font-weight:700;color:#5b8c68}
 .greet-ico{font-size:20px}
+.greet-range{font-size:10px;color:#8aa795;line-height:1.2;white-space:nowrap}
 
 /* ---------- 功能卡片宫格（3 列，参考设计） ---------- */
 .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:4px 0 12px}
