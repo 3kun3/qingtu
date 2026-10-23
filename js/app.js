@@ -1029,10 +1029,11 @@ function renderCity(opts) {
       <div class="ci-poi" data-poi="${p.id}">
         <span class="ci-poi-idx">${i + 1}</span>
         <div class="ci-poi-body">
-          <div class="ci-poi-name">${p.name}${p.book ? '<span class="ci-poi-book">需预约</span>' : ''}</div>
-          <div class="ci-poi-area">${p.area} · ${p.best.includes('morning') ? '建议上午' : p.best.includes('evening') || p.best.includes('night') ? '建议傍晚' : '随时可去'}</div>
+          <div class="ci-poi-name">${p.name}${p.book ? '<span class="ci-poi-book">需预约</span>' : ''}${p._custom ? '<span class="ci-poi-book">自定义</span>' : ''}</div>
+          <div class="ci-poi-area">${p.area} · ${(p.best || []).includes('morning') ? '建议上午' : (p.best || []).includes('evening') || (p.best || []).includes('night') ? '建议傍晚' : '随时可去'}</div>
           <div class="ci-poi-tip">${p.tip || ''}</div>
         </div>
+        ${(p.lat && p.lng && typeof mapUrlOf === 'function') ? `<a class="ci-poi-map" href="${mapUrlOf(p)}" target="_blank" rel="noopener" title="在高德地图中查看位置">📍 地图</a>` : ''}
       </div>`).join('');
     if (c.pois.length > info.highlights.length || _ciPoisOpen) {
       const btn = el('div', 'more-row ci-more',
@@ -1040,7 +1041,10 @@ function renderCity(opts) {
       btn.onclick = () => { _ciPoisOpen = !_ciPoisOpen; paintCiPois(); };
       box.appendChild(btn);
     }
-    /* 点位卡点击 → 景点详情弹层（与原有行为保持一致的话需要看下方是否绑定过；没有就不加） */
+    /* 提议落地：景点可按推荐去、也可自定义添加（添加后进「展开全部」列表） */
+    const addRow = el('div', 'more-row ci-add-poi', '➕ 添加一个我知道的点位');
+    addRow.onclick = () => openAddGem(key, () => { _ciPoisOpen = true; paintCiPois(); });
+    box.appendChild(addRow);
   };
   paintCiPois();
   $('ciCtaName').textContent = c.name;
@@ -2222,7 +2226,7 @@ function renderFeedbackBar() {
   const submitBtn = bar.querySelector('#fbSubmit');
   if (submitBtn) submitBtn.onclick = submitFeedback;
   const addBtn = bar.querySelector('#addGemBtn');
-  if (addBtn) addBtn.onclick = openAddGem;
+  if (addBtn) addBtn.onclick = () => openAddGem();
 }
 
 function submitFeedback() {
@@ -2243,20 +2247,24 @@ function submitFeedback() {
   renderFeedbackBar();
 }
 
-function openAddGem() {
+function openAddGem(cityKey, afterAdd) {
+  const ckey = cityKey || (state.profile && state.profile.city) || '';
+  const cname = (POI_DB[ckey] && POI_DB[ckey].name) || ckey;
   const name = prompt('宝藏地名称？');
   if (!name) return;
-  const area = prompt('在哪个城市/区域？', state.profile.city);
+  const area = prompt('在哪个城市/区域？', cname);
   const tags = prompt('标签（逗号分隔，如 food,history）', 'food');
   const desc = prompt('一句话推荐理由？', '');
-  if (typeof addCustomPOI === 'function') {
-    const poi = addCustomPOI(state.profile.city, {
-      name, area: area || state.profile.city,
+  if (typeof addCustomPOI === 'function' && ckey) {
+    addCustomPOI(ckey, {
+      name, area: area || cname,
       tags: (tags || 'food').split(',').reduce((o, t) => { o[t.trim()] = 1; return o; }, {}),
       hours: 1.5, cost: 1, intensity: 1,
-      lat: 0, lng: 0, custom: true
+      lat: 0, lng: 0, custom: true,
+      tip: desc || '你添加的宝藏地'
     });
     toast(`已添加「${name}」，可在换点时选择 ✨`);
+    if (afterAdd) afterAdd();
   } else {
     toast('添加成功（会话级）');
   }
@@ -5172,8 +5180,9 @@ function bindGlobal() {
   bindHScroll($('hotScroll'), card => {
     if (card && card.dataset.city) route('city', { city: card.dataset.city });
   });
-  // 城市介绍页里的点位卡：点一下展开/收起小贴士
+  // 城市介绍页里的点位卡：点一下展开/收起小贴士（点「地图」链接时不触发，让它正常跳转）
   $('ciPois').addEventListener('click', e => {
+    if (e.target.closest('a')) return;
     const p = e.target.closest('.ci-poi');
     if (p) p.classList.toggle('open');
   });
