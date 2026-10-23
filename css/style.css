@@ -1393,6 +1393,29 @@ body{
 .fb-photo-count{font-size:12px;color:#888;margin-left:8px}
 .fb-submit{background:linear-gradient(135deg,#5a8a66,#3d7a4a);color:#fff;border:none;border-radius:14px;padding:6px 16px;font-size:13px;cursor:pointer;margin-left:auto}
 
+/* 反馈闭环：一键重排 */
+.fb-replan{margin-top:10px}
+.fb-replan-btn{width:100%;background:linear-gradient(135deg,#5a8a66,#3d7a4a);color:#fff;border:none;border-radius:18px;padding:9px 16px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(61,122,74,.25)}
+.fb-replan-btn:active{transform:scale(.98)}
+
+/* 城市页自定义点位：改名 / 删除 */
+.ci-poi-acts{flex:0 0 auto;align-self:center;display:flex;gap:6px}
+.ci-poi-ren,.ci-poi-del{width:26px;height:26px;border-radius:50%;border:1px solid #cfe0cc;background:var(--soft);color:var(--brand-deep);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.ci-poi-del{color:#b5483f;border-color:#eccfca;background:#fbeae3}
+
+/* 我的页：旅手账 */
+.jn-item{padding:12px 14px;margin-bottom:10px}
+.jn-head{display:flex;align-items:baseline;gap:8px}
+.jn-head b{font-size:15px;color:var(--ink)}
+.jn-meta{font-size:12px;color:var(--ink-3)}
+.jn-stars{font-size:14px;color:#e0a23a;letter-spacing:2px;margin-top:4px}
+.jn-time{font-size:11px;color:var(--ink-3);letter-spacing:0;margin-left:8px}
+.jn-text{font-size:13px;color:var(--ink-2);margin-top:6px;line-height:1.6;word-break:break-word}
+.jn-photos{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.jn-photo{width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:zoom-in;border:1px solid var(--line)}
+.jn-viewer{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+.jn-viewer img{max-width:92%;max-height:88vh;border-radius:10px}
+
 /* === AI 弹窗 === */
 .ai-modal{position:fixed;inset:0;z-index:9999;display:none}
 .ai-modal.show{display:block}

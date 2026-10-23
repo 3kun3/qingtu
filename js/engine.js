@@ -275,7 +275,8 @@ function questWeightBoost(profile) {
 /* 用户手动添加一个宝藏地到某座城市的 POI 池。
  * 输入：cityKey, {name, lat, lng, tags:{}, hours, cost, intensity, ...}
  * 返回新 POI 的 id（格式 u_时间戳）。
- * 仅本次会话有效，不持久化到城市分片——避免污染官方 src 数据。 */
+ * 不写入官方分片，但持久化到 localStorage（qt_custom_pois_v1），
+ * 刷新后经 injectCustomPOIs 注回，跨会话保留。 */
 function addCustomPOI(cityKey, poiData) {
   const city = POI_DB[cityKey];
   if (!city) return null;
@@ -301,7 +302,51 @@ function addCustomPOI(cityKey, poiData) {
   // 重新计算该城激活度归一化（新增点可能改变 min/max）
   buildArousalScale(city);
   city.pois.forEach(p => { p.mood = moodOf(p, city); });
+  // 持久化：刷新 / 重新进入城市后仍然在
+  if (typeof Store !== 'undefined' && Store.saveCustomPOI) Store.saveCustomPOI(cityKey, poi);
   return id;
+}
+
+/* 城市分片加载完成后，把用户持久化的自定义点位注回 POI 池（按 id 去重）。 */
+function injectCustomPOIs(cityKey, city) {
+  if (typeof Store === 'undefined' || !Store.listCustomPOIs) return;
+  const saved = Store.listCustomPOIs(cityKey);
+  if (!saved || !saved.length) return;
+  let added = 0;
+  saved.forEach(sp => {
+    if (!sp || !sp.id) return;
+    if (city.pois.some(p => p.id === sp.id)) return;
+    city.pois.push(Object.assign({ _custom: true }, sp));
+    added++;
+  });
+  if (added) {
+    buildArousalScale(city);
+    city.pois.forEach(p => { p.mood = moodOf(p, city); });
+  }
+}
+
+/* 删除一个自定义点位（内存 + 持久化），并重算激活度。 */
+function removeCustomPOI(cityKey, id) {
+  const city = POI_DB[cityKey];
+  if (city) {
+    const i = city.pois.findIndex(p => p.id === id && p._custom);
+    if (i >= 0) {
+      city.pois.splice(i, 1);
+      buildArousalScale(city);
+      city.pois.forEach(p => { p.mood = moodOf(p, city); });
+    }
+  }
+  if (typeof Store !== 'undefined' && Store.deleteCustomPOI) Store.deleteCustomPOI(cityKey, id);
+}
+
+/* 重命名一个自定义点位（内存 + 持久化）。 */
+function renameCustomPOI(cityKey, id, name) {
+  const city = POI_DB[cityKey];
+  if (city) {
+    const p = city.pois.find(x => x.id === id && x._custom);
+    if (p) p.name = name;
+  }
+  if (typeof Store !== 'undefined' && Store.renameCustomPOI) Store.renameCustomPOI(cityKey, id, name);
 }
 
 /* ---------- 用户投稿（本地队列，待审核） ---------- */

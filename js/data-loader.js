@@ -66,6 +66,8 @@ function ensureCity(key) {
       if (!mod || !mod.city) { fail(new Error('分片内容为空: ' + key)); return; }
       __cityCache[key] = mod.city;          // 缓存城市本体
       __hotelCache[key] = mod.hotel || [];  // 住宿另存一份，取用更直接
+      // 把用户持久化的自定义宝藏地注回该城 POI 池
+      if (typeof injectCustomPOIs === 'function') injectCustomPOIs(key, mod.city);
       delete __cityLoading[key];
       resolve(mod.city);
     };

@@ -17,6 +17,8 @@ const KEY_STAY = 'qt_stays_v1';
 const KEY_FEEDBACK = 'qt_feedback_v1';    // 路线反馈
 const KEY_GEMS = 'qt_gems_v1';            // 投稿宝藏地（带照片）
 const KEY_COMMUNITY = 'qt_community_v1';  // 社区动态（所有人可见）
+const KEY_CUSTOM_POIS = 'qt_custom_pois_v1'; // 用户添加的宝藏地 { cityKey: [poi] }
+const KEY_DENSITY_PREF = 'qt_density_pref_v1'; // 最近一次反馈的节奏偏好 'tight'|'ok'|'loose'
 const HISTORY_LIMIT = 50;
 
 /* ---------- 基础读写（带容错） ---------- */
@@ -131,6 +133,9 @@ const Store = {
   addFeedback, getFeedback, listAllFeedback,
   addGem, listGems, listAllGems,
   addCommunityPost, listCommunity,
+  /* 自定义点位持久化 + 节奏偏好 */
+  listCustomPOIs, saveCustomPOI, deleteCustomPOI, renameCustomPOI,
+  getDensityPref, setDensityPref,
   /* 照片处理 */
   fileToBase64
 };
@@ -146,8 +151,6 @@ function addFeedback(fb) {
   list.unshift(item);
   if (list.length > 200) list.length = 200;
   write(KEY_FEEDBACK, list);
-  // 同步到社区动态
-  addCommunityPost({ type: 'feedback', data: item });
   return item;
 }
 function getFeedback(sid) {
@@ -165,7 +168,6 @@ function addGem(gem) {
   list.unshift(item);
   if (list.length > 500) list.length = 500;
   write(KEY_GEMS, list);
-  addCommunityPost({ type: 'gem', data: item });
   return item;
 }
 function listGems(city) {
@@ -188,6 +190,46 @@ function addCommunityPost(post) {
   return item;
 }
 function listCommunity() { return read(KEY_COMMUNITY, []); }
+
+/* ============================================================
+ *  自定义宝藏地持久化：{ [cityKey]: [poi, ...] }
+ *  刷新 / 重新进入城市时由 engine.injectCustomPOIs 注回 POI 池，
+ *  让用户添加的点位跨会话保留。
+ * ============================================================ */
+function listCustomPOIs(cityKey) {
+  const map = read(KEY_CUSTOM_POIS, {});
+  return (map && map[cityKey]) || [];
+}
+function saveCustomPOI(cityKey, poi) {
+  if (!cityKey || !poi || !poi.id) return;
+  const map = read(KEY_CUSTOM_POIS, {}) || {};
+  const list = map[cityKey] || [];
+  if (list.some(p => p.id === poi.id)) return;
+  list.push(poi);
+  map[cityKey] = list;
+  write(KEY_CUSTOM_POIS, map);
+}
+function deleteCustomPOI(cityKey, id) {
+  const map = read(KEY_CUSTOM_POIS, {}) || {};
+  const list = map[cityKey] || [];
+  const next = list.filter(p => p.id !== id);
+  if (next.length) map[cityKey] = next;
+  else delete map[cityKey];
+  write(KEY_CUSTOM_POIS, map);
+}
+function renameCustomPOI(cityKey, id, name) {
+  const map = read(KEY_CUSTOM_POIS, {}) || {};
+  const list = map[cityKey] || [];
+  const p = list.find(x => x.id === id);
+  if (!p) return false;
+  p.name = name;
+  write(KEY_CUSTOM_POIS, map);
+  return true;
+}
+
+/* ---------- 节奏偏好：记住用户最近一次「太满/刚好/太空」反馈 ---------- */
+function getDensityPref() { return read(KEY_DENSITY_PREF, null); }
+function setDensityPref(d) { write(KEY_DENSITY_PREF, d || null); return d; }
 
 /* ---------- 照片处理：File → base64（压缩到 maxDim 以内） ---------- */
 function fileToBase64(file, maxDim) {

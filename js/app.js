@@ -1034,7 +1034,30 @@ function renderCity(opts) {
           <div class="ci-poi-tip">${p.tip || ''}</div>
         </div>
         ${(p.lat && p.lng && typeof mapUrlOf === 'function') ? `<a class="ci-poi-map" href="${mapUrlOf(p)}" target="_blank" rel="noopener" title="在高德地图中查看位置">📍 地图</a>` : ''}
+        ${p._custom ? '<span class="ci-poi-acts"><button class="ci-poi-ren" title="改名">✎</button><button class="ci-poi-del" title="删除">✕</button></span>' : ''}
       </div>`).join('');
+    /* 自定义点位：支持改名 / 删除（内存 + localStorage 同步） */
+    box.querySelectorAll('.ci-poi-acts button').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const item = btn.closest('.ci-poi');
+        const id = item && item.dataset.poi;
+        if (!id) return;
+        if (btn.classList.contains('ci-poi-del')) {
+          removeCustomPOI(key, id);
+          _ciPoisOpen = true;
+          paintCiPois();
+          toast('已删除该自定义点位');
+        } else {
+          const cur = (c.pois.find(x => x.id === id) || {}).name || '';
+          const name = prompt('新名称？', cur);
+          if (!name || name === cur) return;
+          renameCustomPOI(key, id, name);
+          paintCiPois();
+          toast('已改名 ✏️');
+        }
+      };
+    });
     if (c.pois.length > info.highlights.length || _ciPoisOpen) {
       const btn = el('div', 'more-row ci-more',
         _ciPoisOpen ? '收起 ▲' : `展开全部 ${c.pois.length} 处 ▾`);
@@ -1922,6 +1945,12 @@ function quickGo() {
 const LOAD_TIPS = ['匹配兴趣标签…', '计算地理邻近度…', '平衡体力与节奏…', '安排时段与转场…', '生成你的专属行程…'];
 
 function generateAndGo(answers, mode) {
+  /* 反馈闭环：应用最近一次「太满/太空」的节奏偏好（显式重排不受影响） */
+  const pref = (typeof Store !== 'undefined' && Store.getDensityPref) ? Store.getDensityPref() : null;
+  if (pref && pref !== 'ok' && !answers._paceExplicit) {
+    answers = Object.assign({}, answers, { pace: nudgePaceKey(answers.pace, pref) });
+    setTimeout(() => toast('🧠 已按你上次的节奏偏好微调'), 2400);
+  }
   $('loading').hidden = false;
 
   let i = 0;
@@ -2216,6 +2245,7 @@ function renderFeedbackBar() {
   if (photoInput) photoInput.onchange = async (e) => {
     const files = Array.from(e.target.files);
     for (const f of files) {
+      if (state._fbPhotos.length >= 9) { toast('每张反馈最多 9 张照片'); break; }
       try {
         const b64 = await Store.fileToBase64(f, 600);
         state._fbPhotos.push(b64);
@@ -2226,7 +2256,34 @@ function renderFeedbackBar() {
   const submitBtn = bar.querySelector('#fbSubmit');
   if (submitBtn) submitBtn.onclick = submitFeedback;
   const addBtn = bar.querySelector('#addGemBtn');
-  if (addBtn) addBtn.onclick = () => openAddGem();
+  if (addBtn) addBtn.onclick = () => openAddGem(currentPlanCityKey());
+}
+
+/* ---------- 反馈闭环：当前规划城市 + 节奏微调 ---------- */
+function currentPlanCityKey() {
+  const s = state.session;
+  if (s && s.plan && s.plan.trips && s.plan.trips.length && s.plan.trips[0].cityKey) return s.plan.trips[0].cityKey;
+  if (s && s.profile && s.profile.city) return s.profile.city;
+  if (state.profile && state.profile.city) return state.profile.city;
+  return state.lastCity || '';
+}
+
+const PACE_ORDER = ['blitz', 'full', 'moderate', 'chill'];
+
+/* 按密度反馈微调一档：太满 → 更松（向 chill），太空 → 更满（向 blitz） */
+function nudgePaceKey(key, density) {
+  let i = PACE_ORDER.indexOf(key);
+  if (i < 0) i = 1; // 未知节奏按 full 兜底
+  if (density === 'tight') return PACE_ORDER[Math.min(PACE_ORDER.length - 1, i + 1)];
+  if (density === 'loose') return PACE_ORDER[Math.max(0, i - 1)];
+  return PACE_ORDER[i];
+}
+
+/* 用相反节奏重排本次行程（_paceExplicit 标记避免偏好二次叠加） */
+function replanWithDensity(d) {
+  if (!state.session || !state.session.answers) { toast('先重新生成一条路线再试'); return; }
+  const a = state.session.answers;
+  generateAndGo(Object.assign({}, a, { pace: nudgePaceKey(a.pace, d), _paceExplicit: true }), state.session.mode);
 }
 
 function submitFeedback() {
@@ -2234,17 +2291,30 @@ function submitFeedback() {
     toast('请先选择密度和星级');
     return;
   }
+  const density = state._fbDensity;
   const text = $('fbText') ? $('fbText').value.trim() : '';
   Store.addFeedback({
-    city: state.profile.city, cityKey: state.lastCity || state.profile.cityKey,
+    city: state.profile.city, cityKey: currentPlanCityKey(),
     days: state.profile.days,
     mode: state.session ? state.session.mode : 'deep',
-    density: state._fbDensity, rating: state._fbRating,
+    density: density, rating: state._fbRating,
     text: text, photos: state._fbPhotos || []
   });
-  toast('感谢反馈！已记录到社区 📝');
+  // 记住节奏偏好：下次生成路线自动微调一档
+  Store.setDensityPref(density);
+  toast('反馈成功！已记住你的节奏 ✨');
   state._fbDensity = null; state._fbRating = null; state._fbPhotos = [];
   renderFeedbackBar();
+  if (density !== 'ok') {
+    const bar = $('feedbackBar');
+    if (bar) {
+      const row = el('div', 'fb-replan');
+      const btn = el('button', 'fb-replan-btn', density === 'tight' ? '🔄 按更松的节奏重排这趟' : '🔄 按更满的节奏重排这趟');
+      btn.onclick = () => replanWithDensity(density);
+      row.appendChild(btn);
+      bar.appendChild(row);
+    }
+  }
 }
 
 function openAddGem(cityKey, afterAdd) {
@@ -4978,10 +5048,51 @@ function renderMine() {
     ? hist.map(x => mineItemHTML(x, false)).join('')
     : `<div class="empty">还没有生成记录 · 去首页试试两种入口</div>`;
 
+  /* 旅手账：把反馈记录呈现为个人足迹（仅存本机） */
+  const jBox = $('journalList');
+  if (jBox) {
+    const fbs = Store.listAllFeedback();
+    jBox.innerHTML = fbs.length
+      ? fbs.map(journalItemHTML).join('')
+      : '<div class="empty">还没有记录 · 生成路线后在底部反馈一句</div>';
+    jBox.querySelectorAll('.jn-photo').forEach(img => {
+      img.onclick = () => openJournalPhoto(img.getAttribute('src'));
+    });
+  }
+
   bindMine();
   // 延迟初始化地图，确保容器尺寸已计算
   setTimeout(() => drawFootMap(footCities), 100);
   setTimeout(() => { if (_footMap) _footMap.invalidateSize(); }, 300);
+}
+
+/* ---------- 旅手账：反馈记录 → 个人足迹卡片 ---------- */
+const JN_DENSITY = { tight: '😅 太满', ok: '😊 刚好', loose: '😴 太空' };
+
+function journalItemHTML(f) {
+  const c = POI_DB[f.cityKey] || POI_DB[f.city] || { name: f.city || '未知城市' };
+  const d = new Date(f.time);
+  const pad = n => (n < 10 ? '0' + n : '' + n);
+  const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const r = f.rating || 0;
+  const stars = '★'.repeat(r) + '☆'.repeat(Math.max(0, 5 - r));
+  const photos = (f.photos || []).map(p => `<img class="jn-photo" src="${p}" alt="照片">`).join('');
+  return `<div class="jn-item card">
+    <div class="jn-head"><b>${escAttr(c.name)}</b><span class="jn-meta">${f.days ? f.days + '天 · ' : ''}${JN_DENSITY[f.density] || ''}</span></div>
+    <div class="jn-stars">${stars}<span class="jn-time">${dateStr}</span></div>
+    ${f.text ? `<div class="jn-text">${escAttr(f.text)}</div>` : ''}
+    ${photos ? `<div class="jn-photos">${photos}</div>` : ''}
+  </div>`;
+}
+
+/* 全屏看图：点照片放大，点任意处关闭 */
+function openJournalPhoto(src) {
+  const ov = el('div', 'jn-viewer');
+  const img = document.createElement('img');
+  img.src = src;
+  ov.appendChild(img);
+  ov.onclick = () => ov.remove();
+  document.body.appendChild(ov);
 }
 
 function mineItemHTML(item, isFav) {
@@ -5143,7 +5254,7 @@ function bindGlobal() {
   });
   // 城市介绍页里的点位卡：点一下展开/收起小贴士（点「地图」链接时不触发，让它正常跳转）
   $('ciPois').addEventListener('click', e => {
-    if (e.target.closest('a')) return;
+    if (e.target.closest('a, button')) return;
     const p = e.target.closest('.ci-poi');
     if (p) p.classList.toggle('open');
   });
