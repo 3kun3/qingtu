@@ -194,6 +194,7 @@ function experienceRhythm(day, profile) {
       target: +target.toFixed(3),
       actual: +actual.toFixed(3),
       diff: +(actual - target).toFixed(3),
+      fit: Math.round(Math.max(0, 1 - Math.abs(actual - target)) * 100),
       hour: t.startHour
     };
   });
