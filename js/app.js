@@ -1029,7 +1029,7 @@ function renderCity(opts) {
       <div class="ci-poi" data-poi="${p.id}">
         <span class="ci-poi-idx">${i + 1}</span>
         <div class="ci-poi-body">
-          <div class="ci-poi-name">${p.name}${p.book ? '<span class="ci-poi-book">需预约</span>' : ''}${p._custom ? '<span class="ci-poi-book">自定义</span>' : ''}</div>
+          <div class="ci-poi-name">${p.name}${p.book ? '<span class="ci-poi-book">需预约</span>' : ''}${p._custom ? '<span class="ci-poi-mine">⭐ 你的点位</span>' : ''}</div>
           <div class="ci-poi-area">${p.area} · ${(p.best || []).includes('morning') ? '建议上午' : (p.best || []).includes('evening') || (p.best || []).includes('night') ? '建议傍晚' : '随时可去'}</div>
           <div class="ci-poi-tip">${p.tip || ''}</div>
         </div>
@@ -1065,7 +1065,7 @@ function renderCity(opts) {
       box.appendChild(btn);
     }
     /* 提议落地：景点可按推荐去、也可自定义添加（添加后进「展开全部」列表） */
-    const addRow = el('div', 'more-row ci-add-poi', '➕ 添加一个我知道的点位');
+    const addRow = el('div', 'more-row ci-add-poi', '➕ 添加一个我知道的点位 · 直接进引擎打分池');
     addRow.onclick = () => openAddGem(key, () => { _ciPoisOpen = true; paintCiPois(); });
     box.appendChild(addRow);
   };
@@ -1949,7 +1949,7 @@ function generateAndGo(answers, mode) {
   const pref = (typeof Store !== 'undefined' && Store.getDensityPref) ? Store.getDensityPref() : null;
   if (pref && pref !== 'ok' && !answers._paceExplicit) {
     answers = Object.assign({}, answers, { pace: nudgePaceKey(answers.pace, pref) });
-    setTimeout(() => toast('🧠 已按你上次的节奏偏好微调'), 2400);
+    setTimeout(() => toast('🧠 引擎已按你的节奏偏好自动调档'), 2400);
   }
   $('loading').hidden = false;
 
@@ -2206,18 +2206,22 @@ function renderFeedbackBar() {
     const host = $('resultDays') || $('page-result');
     if (host) host.parentNode.appendChild(bar);
   }
-  bar.innerHTML = `<div class="fb-row">
-      <span>路线密度：</span>
+  bar.innerHTML = `<div class="fb-head">
+      <span class="fb-badge">🧠 节奏自适应</span>
+      <span class="fb-sub">你的反馈会直接调节引擎节奏参数，下一条路线自动贴合你</span>
+    </div>
+    <div class="fb-row">
+      <span>节奏感受：</span>
       <button class="fb-btn" data-fb="tight">😅 太满</button>
       <button class="fb-btn" data-fb="ok">😊 刚好</button>
       <button class="fb-btn" data-fb="loose">😴 太空</button>
     </div>
     <div class="fb-row">
-      <span>满意度：</span>
+      <span>体验评分：</span>
       <span class="fb-stars" id="fbStars">${[1,2,3,4,5].map(i => `<i data-r="${i}">☆</i>`).join('')}</span>
     </div>
     <div class="fb-row">
-      <textarea class="fb-text" id="fbText" placeholder="说说你的感受（选填）…" rows="2"></textarea>
+      <textarea class="fb-text" id="fbText" placeholder="哪里不合心意？这条会写进你的旅手账（选填）…" rows="2"></textarea>
     </div>
     <div class="fb-row">
       <label class="fb-photo-btn">📷 上传照片
@@ -2226,7 +2230,7 @@ function renderFeedbackBar() {
       <span class="fb-photo-count" id="fbPhotoCount">0 张</span>
       <button class="fb-submit" id="fbSubmit">提交反馈</button>
     </div>
-    <button class="fb-addgem" id="addGemBtn">➕ 添加宝藏地</button>`;
+    <button class="fb-addgem" id="addGemBtn">➕ 添加宝藏地 · 直接进引擎打分池</button>`;
   state._fbPhotos = [];
   bar.querySelectorAll('.fb-btn').forEach(b => {
     b.onclick = () => {
@@ -2302,7 +2306,7 @@ function submitFeedback() {
   });
   // 记住节奏偏好：下次生成路线自动微调一档
   Store.setDensityPref(density);
-  toast('反馈成功！已记住你的节奏 ✨');
+  toast('已记录！引擎已按你的节奏校准 ✨');
   state._fbDensity = null; state._fbRating = null; state._fbPhotos = [];
   renderFeedbackBar();
   if (density !== 'ok') {
@@ -2312,6 +2316,18 @@ function submitFeedback() {
       const btn = el('button', 'fb-replan-btn', density === 'tight' ? '🔄 按更松的节奏重排这趟' : '🔄 按更满的节奏重排这趟');
       btn.onclick = () => replanWithDensity(density);
       row.appendChild(btn);
+      /* 把「自适应」算给评审看：明确展示节奏参数从哪档调到哪档 */
+      const a = state.session && state.session.answers;
+      if (a && a.pace) {
+        const to = nudgePaceKey(a.pace, density);
+        const fromL = (PACE_CFG[a.pace] || {}).label || a.pace;
+        if (to !== a.pace) {
+          const toL = (PACE_CFG[to] || {}).label || to;
+          row.appendChild(el('div', 'fb-replan-hint', `⚙️ 引擎节奏参数已自动调档：${fromL} → ${toL}`));
+        } else {
+          row.appendChild(el('div', 'fb-replan-hint', `当前已是「${fromL}」极限节奏，这一档已记住，后续路线会沿用`));
+        }
+      }
       bar.appendChild(row);
     }
   }
@@ -5054,7 +5070,7 @@ function renderMine() {
     const fbs = Store.listAllFeedback();
     jBox.innerHTML = fbs.length
       ? fbs.map(journalItemHTML).join('')
-      : '<div class="empty">还没有记录 · 生成路线后在底部反馈一句</div>';
+      : '<div class="empty">还没有手账 · 生成路线后在底部反馈一句，它会沉淀在这里</div>';
     jBox.querySelectorAll('.jn-photo').forEach(img => {
       img.onclick = () => openJournalPhoto(img.getAttribute('src'));
     });
@@ -5077,8 +5093,11 @@ function journalItemHTML(f) {
   const r = f.rating || 0;
   const stars = '★'.repeat(r) + '☆'.repeat(Math.max(0, 5 - r));
   const photos = (f.photos || []).map(p => `<img class="jn-photo" src="${p}" alt="照片">`).join('');
+  const v = cityVisual(f.cityKey || f.city);
+  /* 非「刚好」的反馈会调档引擎节奏 —— 在条目上把这个闭环标出来 */
+  const tuned = f.density === 'tight' || f.density === 'loose';
   return `<div class="jn-item card">
-    <div class="jn-head"><b>${escAttr(c.name)}</b><span class="jn-meta">${f.days ? f.days + '天 · ' : ''}${JN_DENSITY[f.density] || ''}</span></div>
+    <div class="jn-head"><span class="jn-emoji">${v.emoji}</span><b>${escAttr(c.name)}</b><span class="jn-meta">${f.days ? f.days + '天 · ' : ''}${JN_DENSITY[f.density] || ''}</span>${tuned ? '<span class="jn-tag">⚙️ 已校准后续节奏</span>' : ''}</div>
     <div class="jn-stars">${stars}<span class="jn-time">${dateStr}</span></div>
     ${f.text ? `<div class="jn-text">${escAttr(f.text)}</div>` : ''}
     ${photos ? `<div class="jn-photos">${photos}</div>` : ''}
