@@ -4978,49 +4978,10 @@ function renderMine() {
     ? hist.map(x => mineItemHTML(x, false)).join('')
     : `<div class="empty">还没有生成记录 · 去首页试试两种入口</div>`;
 
-  /* 社区动态：所有人的反馈 + 宝藏地投稿 */
-  const community = Store.listCommunity ? Store.listCommunity() : [];
-  $('communityList').innerHTML = community.length
-    ? community.slice(0, 30).map(c => communityItemHTML(c)).join('')
-    : `<div class="empty">还没有社区动态 · 去结果页反馈或投稿宝藏地吧</div>`;
-
   bindMine();
   // 延迟初始化地图，确保容器尺寸已计算
   setTimeout(() => drawFootMap(footCities), 100);
   setTimeout(() => { if (_footMap) _footMap.invalidateSize(); }, 300);
-}
-
-/* 社区动态卡片 */
-function communityItemHTML(c) {
-  const d = new Date(c.time);
-  const pad = n => (n < 10 ? '0' + n : '' + n);
-  const timeStr = `${d.getMonth()+1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  if (c.type === 'feedback') {
-    const f = c.data || {};
-    const densityMap = { tight: '😅 太满', ok: '😊 刚好', loose: '😴 太空' };
-    const stars = '★'.repeat(f.rating || 0) + '☆'.repeat(5 - (f.rating || 0));
-    const photos = (f.photos || []).slice(0, 3).map(p => `<img src="${p}" class="cm-photo">`).join('');
-    return `<div class="cm-card">
-      <div class="cm-head"><span class="cm-tag">📝 路线反馈</span><span class="cm-time">${timeStr}</span></div>
-      <div class="cm-body">
-        <div class="cm-city">${f.city || ''} · ${f.days || ''}天 · ${densityMap[f.density] || ''} · ${stars}</div>
-        ${f.text ? `<div class="cm-text">${f.text}</div>` : ''}
-        ${photos ? `<div class="cm-photos">${photos}</div>` : ''}
-      </div>
-    </div>`;
-  } else if (c.type === 'gem') {
-    const g = c.data || {};
-    const photos = (g.photos || []).slice(0, 3).map(p => `<img src="${p}" class="cm-photo">`).join('');
-    return `<div class="cm-card">
-      <div class="cm-head"><span class="cm-tag gem">💎 宝藏地投稿</span><span class="cm-time">${timeStr}</span></div>
-      <div class="cm-body">
-        <div class="cm-city">${g.city || ''} · ${g.name || ''}</div>
-        ${g.reason ? `<div class="cm-text">${g.reason}</div>` : ''}
-        ${photos ? `<div class="cm-photos">${photos}</div>` : ''}
-      </div>
-    </div>`;
-  }
-  return '';
 }
 
 function mineItemHTML(item, isFav) {

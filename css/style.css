@@ -426,17 +426,6 @@ body{
 .sec-action:hover{background:var(--soft);color:var(--brand-deep)}
 .sec-sub{font-size:11px;color:var(--ink-3);font-weight:400}
 
-/* ---------- 社区动态 ---------- */
-.cm-card{background:#fff;border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.cm-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.cm-tag{font-size:11px;background:#eef5ff;color:#4a7cb0;padding:2px 8px;border-radius:8px}
-.cm-tag.gem{background:#fdf3e2;color:#8a6a34}
-.cm-time{font-size:11px;color:#aaa}
-.cm-city{font-size:13px;font-weight:600;color:#333;margin-bottom:4px}
-.cm-text{font-size:12.5px;color:#555;line-height:1.6;margin-bottom:6px}
-.cm-photos{display:flex;gap:6px;flex-wrap:wrap}
-.cm-photo{width:80px;height:80px;object-fit:cover;border-radius:8px}
-
 /* ---------- 人气城市（实景照片 + 排行角标） ----------
    ⚠️ 横滑区在竖向滚动容器里的三个坑，缺一个就「划不动 + 点不进」：
    1) 父级 .wrap 只有 padding，横向没有边界 → 滚动容器宽度等于内容宽度，
