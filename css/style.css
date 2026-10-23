@@ -345,6 +345,7 @@ body{
 .picker-item .pi-emoji{font-size:18px}
 .picker-item .pi-name{font-size:13px;font-weight:700;color:var(--ink)}
 .picker-item .pi-tag{font-size:10px;color:#fff;background:var(--gold);border-radius:6px;padding:0 5px;margin-left:auto}
+.picker-empty{grid-column:1/-1;padding:18px 12px;font-size:12.5px;color:var(--ink-3);text-align:center}
 
 /* ---------- 大交通卡（结果页） ---------- */
 .transport-card{margin:12px 0;border-radius:18px;overflow:hidden;border:1px solid var(--line);

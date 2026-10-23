@@ -2293,24 +2293,36 @@ function syncHomeCard() {
   }
 }
 
-/* 弹出位置选择面板（手选城市） */
+/* 弹出位置选择面板（手选城市，支持搜索） */
 function openHomePicker() {
   if ($('homePickerMask')) return;
   const cur = Store.getHome();
   const mask = el('div', 'picker-mask');
   mask.id = 'homePickerMask';
   const cities = Object.keys(POI_DB);
-  const items = cities.map(k => {
+  const TREASURE = new Set(['quanzhou', 'chaozhou', 'luoyang', 'liuzhou', 'shaoxing',
+    'datong', 'zhenjiang', 'linhai', 'jianshui', 'shantou']);
+  const itemHtml = k => {
     const c = POI_DB[k], v = cityVisual(k);
-    const isTreasure = k === 'quanzhou' || k === 'chaozhou' || k === 'luoyang' ||
-      k === 'liuzhou' || k === 'shaoxing' || k === 'datong' ||
-      k === 'zhenjiang' || k === 'linhai' || k === 'jianshui' || k === 'shantou';
     return `<button class="picker-item ${k === cur ? 'on' : ''}" data-home="${k}">
       <span class="pi-emoji">${v.emoji}</span>
       <span class="pi-name">${c.name}</span>
-      ${isTreasure ? '<span class="pi-tag">宝藏</span>' : ''}
+      ${TREASURE.has(k) ? '<span class="pi-tag">宝藏</span>' : ''}
     </button>`;
-  }).join('');
+  };
+  /* 搜索过滤：复用 Places 的拼音/首字母打分（共青 / gongqing / gqc 都能命中） */
+  const renderList = kw => {
+    const list = mask.querySelector('.picker-list');
+    let keys = cities;
+    if (kw) {
+      const hits = (typeof Places !== 'undefined' && Places.searchPlaces)
+        ? Places.searchPlaces(kw).filter(x => x.type === 'city').map(x => x.key) : [];
+      keys = hits.length ? hits : cities.filter(k => (POI_DB[k].name || '').includes(kw));
+    }
+    list.innerHTML = keys.length
+      ? keys.map(itemHtml).join('')
+      : `<div class="picker-empty">没找到「${escAttr(kw)}」，换个词试试</div>`;
+  };
 
   mask.innerHTML = `<div class="picker-sheet">
     <div class="picker-head">
@@ -2318,9 +2330,18 @@ function openHomePicker() {
       <button class="picker-close" data-close="1">✕</button>
     </div>
     <div class="picker-hint">选好后，路线结果页会自动算出「出发地 → 目的地」的高铁 / 飞机 / 自驾方案</div>
-    <div class="picker-list">${items}</div>
+    <div class="dest-search">
+      <span class="ds-icon">🔍</span>
+      <input id="homeSearchInput" class="ds-input" placeholder="搜城市名 / 拼音，如「共青」「gongqing」「gqc」" autocomplete="off" />
+      <button id="homeSearchClear" class="ds-clear" hidden>✕</button>
+    </div>
+    <div class="picker-list">${cities.map(itemHtml).join('')}</div>
   </div>`;
   document.body.appendChild(mask);
+
+  const hsInp = $('homeSearchInput'), hsClr = $('homeSearchClear');
+  hsInp.oninput = () => { const kw = hsInp.value.trim(); hsClr.hidden = !kw; renderList(kw); };
+  hsClr.onclick = () => { hsInp.value = ''; hsClr.hidden = true; renderList(''); hsInp.focus(); };
 
   mask.addEventListener('click', e => {
     // 同上：点空白或点关闭按钮（含按钮内文字）都关掉
